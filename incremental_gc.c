@@ -24,21 +24,18 @@ struct gc_object {
     intptr_t user[];
 };
 
-//size of gc object meta
-#define META_SIZE (sizeof(struct gc_object) / sizeof(intptr_t))
-
 //make sure it's right
-C_STATIC_ASSERT(META_SIZE == 2, incr_copy_gc);
+C_STATIC_ASSERT(GC_META_SIZE_WORDS == (sizeof(struct gc_object) / sizeof(intptr_t)), incr_copy_gc);
 
 //convert a user pointer to an allocation pointer
 static inline struct gc_object *get_gc_ptr(intptr_t *user) {
-    return (struct gc_object *)(user - META_SIZE);
+    return (struct gc_object *)(user - GC_META_SIZE_WORDS);
 }
 
 //gets the size of an allocation returned from gc_alloc_*
 intptr_t gc_get_size(intptr_t *ref) {
     assert(ref);
-    return get_gc_ptr(ref)->size - META_SIZE;
+    return get_gc_ptr(ref)->size - GC_META_SIZE_WORDS;
 }
 
 //determine if a user ptr points to a white object
@@ -336,12 +333,12 @@ intptr_t *gc_alloc_with_layout(
     assert(layout);
     struct gc_object *ret =
         (struct gc_object *)
-        gc_alloc(self, root_iter, root_iter_ctx, size + META_SIZE);
+        gc_alloc(self, root_iter, root_iter_ctx, size + GC_META_SIZE_WORDS);
     if (ret == NULL) {
         return NULL;
     }
     //set size
-    ret->size = size + META_SIZE;
+    ret->size = size + GC_META_SIZE_WORDS;
     //set the layout pointer
     ret->layout = (intptr_t)layout;
     ret->forward = 0;

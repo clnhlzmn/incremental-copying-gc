@@ -9,6 +9,9 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+/* Each object holds 2 extra intptr_t for GC metadata. */
+#define GC_META_SIZE_WORDS 2
+
 struct gc {
     //PRIVATE
     //pointers to semispaces
