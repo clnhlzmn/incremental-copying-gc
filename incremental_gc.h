@@ -34,6 +34,8 @@ struct gc {
     //PRIVATE
 };
 
+void gc_print_heap(struct gc *self);
+
 //this is intended as a user (pl implementation) 
 //interface to a generic memory allocator/manager
 

@@ -7,7 +7,7 @@
 #include <inttypes.h>
 
 //number of objects to scan each increment
-#define GC_K (2)
+#define GC_K (10)
 
 //number of bits in a intptr_t
 #define UINTPTR_BIT (CHAR_BIT * sizeof(intptr_t))
@@ -93,33 +93,41 @@ static inline void gc_swap_spaces(struct gc *self) {
 
 #ifndef NDEBUG
 
+static const char *gc_get_layout_name(intptr_t layout) {
+    return layout == (intptr_t)gc_layout_ref_array 
+                  ? "refs" 
+                  : layout == (intptr_t)gc_layout_int_array
+                           ? "ints" 
+                           : "user";
+}
+
 static inline void gc_print_object(intptr_t *heap_begin, struct gc_object *obj) {
     if (obj->forward) {
-        printf("{addr:%"PRIxPTR", size:%"PRIdPTR", forward:%"PRIxPTR"}[\r\n",
+        printf("{addr:%04"PRIXPTR", size:%"PRIdPTR", forward:%04"PRIXPTR"} [\r\n",
             (intptr_t*)obj - heap_begin,
             (intptr_t)obj->size,
             (intptr_t*)obj->layout - heap_begin
         );
     } else {
-        const char *layout = 
-            obj->layout == (intptr_t)gc_layout_ref_array 
-                        ? "refs" 
-                        : obj->layout == (intptr_t)gc_alloc_int_array
-                                      ? "ints" 
-                                      : "?";
-        printf("{addr:%"PRIxPTR", size:%llu, layout:%s}[\r\n",
+        const char *layout = gc_get_layout_name(obj->layout);
+        printf("{addr:%04"PRIXPTR", size:%"PRIdPTR", layout:%s} [\r\n",
             (intptr_t*)obj - heap_begin,
             (intptr_t)obj->size,
             layout
         );
     }
     for (intptr_t i = 0; i < gc_get_size(obj->user); ++i) {
-        printf("    %p\r\n", (void*)obj->user[i]);
+        intptr_t heap_offset = ((intptr_t*)obj->user[i] - heap_begin - GC_META_SIZE_WORDS) % 0x10000;
+        if (heap_offset < 0) heap_offset = 0;
+        printf("    %04"PRIXPTR", %016"PRIXPTR"\r\n", 
+            heap_offset,  /*print as an offset into the heap*/
+            obj->user[i]  /*and as a raw int*/
+        );
     }
     printf("]\r\n");
 }
 
-static inline void gc_print_heap(struct gc *self) {
+void gc_print_heap(struct gc *self) {
     if (self->last_alloc) {
         printf("from-space\r\n");
         //get the other ptr
@@ -191,16 +199,8 @@ static inline struct gc_object *gc_forward(
     } else {
         //obj needs to be forwarded
         if (!GC_CHECK_SIZE(self, obj->size)) {
-            //not enough space
-            assert(0 && "");
-            //TODO: signal self that forwarding has 
-            //and how to resume if it's possible to 
-            //increase memory size, if memory can't
-            //be increased then allocation can't continue.
-            //will be tricky because alloc doesn't call 
-            //gc_forward directly, but through a 
-            //callback given to a foreach_t function
-            //iterating the roots or an object's refs
+            //TODO: report this somehow?
+            return obj;
         }
         if (!gc_obj_is_white(self, obj->user)) {
             /*gc_print_heap(self);
@@ -249,7 +249,8 @@ static inline void forward_ref_cb(intptr_t **it, void *ctx) {
     assert(ctx);
     /*printf("forward_ref_cb: self = %p, root = %p\r\n", data, it);*/
     if (*it == NULL) { return; }
-    *it = gc_forward((struct gc*)ctx, get_gc_ptr(*it))->user;
+    struct gc *gc = ctx;
+    *it = gc_forward(gc, get_gc_ptr(*it))->user;
 }
 
 //allocates n Cells, collecting if necessary
