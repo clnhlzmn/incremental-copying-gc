@@ -98,7 +98,7 @@ static inline void gc_print_object(intptr_t *heap_begin, struct gc_object *obj) 
         printf("{addr:%"PRIxPTR", size:%"PRIdPTR", forward:%"PRIxPTR"}[\r\n",
             (intptr_t*)obj - heap_begin,
             (intptr_t)obj->size,
-            (intptr_t*)obj->forward - heap_begin
+            (intptr_t*)obj->layout - heap_begin
         );
     } else {
         const char *layout = 
@@ -107,9 +107,9 @@ static inline void gc_print_object(intptr_t *heap_begin, struct gc_object *obj) 
                         : obj->layout == (intptr_t)gc_alloc_int_array
                                       ? "ints" 
                                       : "?";
-        printf("{addr:%lld, size:%llu, layout:%s}[\r\n",
+        printf("{addr:%"PRIxPTR", size:%llu, layout:%s}[\r\n",
             (intptr_t*)obj - heap_begin,
-            obj->size,
+            (intptr_t)obj->size,
             layout
         );
     }

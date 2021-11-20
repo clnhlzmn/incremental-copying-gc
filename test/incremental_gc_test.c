@@ -60,7 +60,7 @@ int main(void) {
         for (int i = 0; i < OBJ_SIZE; ++i) {
             assert(root[i]);
             assert(gc_get_size((intptr_t*)root[i]) == OBJ_SIZE);
-            gc_read_barrier(&gc_inst, &((intptr_t**)root)[i]);
+            gc_read_barrier(&gc_inst,(intptr_t **) &root[i]);
             for (unsigned j = 0; j < OBJ_SIZE; ++j) {
                 assert(((intptr_t*)root[i])[j] == INT_DATA);
             }
