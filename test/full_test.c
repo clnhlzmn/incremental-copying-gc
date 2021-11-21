@@ -31,6 +31,7 @@ int main(void) {
     
     for (int n = 0; n < 5000; ++n) {
         size_t i = rand() % array_size;
+        gc_read_barrier(&gc, &root);
         intptr_t **array = (intptr_t**)root;
         gc_read_barrier(&gc, &array[i]);
         if (array[i] == NULL) {
